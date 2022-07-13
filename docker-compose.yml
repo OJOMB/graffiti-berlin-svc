@@ -1,0 +1,30 @@
+version: "3.9"
+services:
+  svc:
+    build:
+      context: .
+      network: host
+    ports:
+      - 8080:8080
+    environment:
+      - SVC_PORT=8080
+      - SVC_ENVIRONMENT=dev
+      - SVC_VERSION=${SVC_VERSION}
+      - SVC_VERSION=v0.0.0
+      - DB_HOST=0.0.0.0
+      - DB_PORT=3306
+      - DB_USER=root
+      - DB_PASSWORD=simple
+
+  db:
+    image: mysql
+    ports:
+      - 3306:3306
+    environment:
+      MYSQL_ROOT_PASSWORD: simple
+      # MYSQL_USER: youruser
+      # MYSQL_PASSWORD: yourpassword
+    command: --default-authentication-plugin=mysql_native_password
+    restart: always
+    volumes:
+      - ./db/relational:/docker-entrypoint-initdb.d

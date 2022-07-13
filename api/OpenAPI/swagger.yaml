@@ -1,0 +1,82 @@
+openapi: 3.0.0
+info:
+  title: subscription-svc
+  description: subscription-svc demo web-servive
+  version: 0.1.9
+
+paths:
+  /api/v1/products:
+    get:
+      tags:
+        - products
+      summary: Retrieves list of matching products
+      description: Either returns all available products or the subset of products to which the given voucher code in the query applies
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      parameters:
+        - name: voucher_code
+          in: query
+          description: voucher code used to filter products
+          required: false
+          type: string
+      responses:
+        "200":
+          description: successfully retrieved matching products
+          schema:
+            type: array
+            items:
+              $ref: "#/definitions/Product"
+        "400":
+          description: Given voucher is invalid
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    description: error explaining why the voucher is invalid
+                    example: bad input data - voucher is out of valid time range
+        "404":
+          description: Can't find voucher with given voucher code
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    description: error explaining the voucher cannot be found
+                    example: resource not found - no such voucher with code 'non_existing_voucher_code' exists
+        "500":
+          description: unexpected system error encountered whilst serving request
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    description: error broadly explaining the nature of the system error
+                    example: encountered error - failed to retrieve products
+
+definitions:
+  Product:
+    properties:
+      id:
+        type: string
+      name:
+        type: string
+      description:
+        type: string
+      duration_days:
+        type: integer
+      price:
+        type: number
+        format: float
+    required:
+      - id
+      - name
+      - duration_days
+      - price
