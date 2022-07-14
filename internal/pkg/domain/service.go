@@ -36,13 +36,14 @@ func (s *Service) CreateUser(ctx context.Context, userName, email, password stri
 		return nil, newSystemError("failed to generate valid ID", err)
 	}
 
+	// create and validate user in memory
 	user := NewUser(id, userName, email, password)
-	if s.repo.CreateUser(ctx, *user); err != nil {
-		return nil, newSystemError("failed to store new user", err)
-	}
-
 	if err := user.Validate(s.idTool); err != nil {
 		return nil, newInvalidInputError("user is invalid", err)
+	}
+
+	if err := s.repo.CreateUser(ctx, *user); err != nil {
+		return nil, newSystemError("failed to store new user", err)
 	}
 
 	return user, nil
@@ -50,21 +51,23 @@ func (s *Service) CreateUser(ctx context.Context, userName, email, password stri
 
 func (s *Service) GetUser(ctx context.Context, userID string) (*User, *Error) {
 	if !s.idTool.IsValid(userID) {
-		return nil, newInvalidInputError("userID must be a valid UUIDv4", nil)
+		return nil, newInvalidInputError("format of userID is invalid", nil)
 	}
 
 	user, err := s.repo.GetUser(ctx, userID)
 	if err != nil {
-		return nil, newSystemError("failed to store new user", err)
+		return nil, newSystemError("failed to retrieve user", err)
+	} else if user == nil {
+		return nil, newResourceNotFoundError("user does not exist", nil)
 	}
 
 	return user, nil
 }
 
 // PatchUser updates the user attributes with the given patch
-func (s *Service) PatchUser(ctx context.Context, userID string, patchJSON []byte) error {
+func (s *Service) PatchUser(ctx context.Context, userID string, patchJSON []byte) *Error {
 	if !s.idTool.IsValid(userID) {
-		return newInvalidInputError("userID must be a valid UUIDv4", nil)
+		return newInvalidInputError("format of userID is invalid", nil)
 	}
 
 	patch, err := jsonpatch.DecodePatch(patchJSON)
@@ -93,7 +96,7 @@ func (s *Service) PatchUser(ctx context.Context, userID string, patchJSON []byte
 
 	// need to validate user post-patch to ensure we're not left in an invalid state
 	if err := user.Validate(s.idTool); err != nil {
-		return newInvalidInputError("patched leaves user in invalid state", err)
+		return newInvalidInputError("patch would leave user in invalid state", err)
 	}
 
 	if err := s.repo.UpdateUser(ctx, *user); err != nil {
