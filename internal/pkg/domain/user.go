@@ -30,7 +30,7 @@ func NewUser(id, userName, email, password string) *User {
 	}
 }
 
-func (u *User) Validate(idValidator IDValidator) error {
+func (u *User) Validate(idValidator IDValidator, pwordValidator PasswordValidator) error {
 	if !idValidator.IsValid(u.ID) {
 		return fmt.Errorf("id format is invalid")
 	}
@@ -61,6 +61,10 @@ func (u *User) Validate(idValidator IDValidator) error {
 		return fmt.Errorf("password must not be empty")
 	case len(u.Password) > 255:
 		return fmt.Errorf("password must not be longer than 255 characters")
+	}
+
+	if !pwordValidator.IsValid(u.Password) {
+		return fmt.Errorf("password is not in expected salted hash format")
 	}
 
 	return nil

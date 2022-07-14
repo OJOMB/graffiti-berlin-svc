@@ -15,14 +15,17 @@ const (
 type Service struct {
 	logger *logrus.Entry
 	repo   Repo
-	idTool IDTool
+
+	passWordTool PasswordTool
+	idTool       IDTool
 }
 
-func NewService(logger *logrus.Logger, repo Repo, idTool IDTool) *Service {
+func NewService(logger *logrus.Logger, repo Repo, idTool IDTool, passwordTool PasswordTool) *Service {
 	return &Service{
-		logger: logger.WithField("component", componentService),
-		repo:   repo,
-		idTool: idTool,
+		logger:       logger.WithField("component", componentService),
+		repo:         repo,
+		idTool:       idTool,
+		passWordTool: passwordTool,
 	}
 }
 
@@ -36,9 +39,15 @@ func (s *Service) CreateUser(ctx context.Context, userName, email, password stri
 		return nil, newSystemError("failed to generate valid ID", err)
 	}
 
+	// generate salted hash from plaintext password
+	saltedHash, err := s.passWordTool.New(password)
+	if err != nil {
+		return nil, newSystemError("failed to hash password", err)
+	}
+
 	// create and validate user in memory
-	user := NewUser(id, userName, email, password)
-	if err := user.Validate(s.idTool); err != nil {
+	user := NewUser(id, userName, email, saltedHash)
+	if err := user.Validate(s.idTool, s.passWordTool); err != nil {
 		return nil, newInvalidInputError("user is invalid", err)
 	}
 
@@ -95,7 +104,7 @@ func (s *Service) PatchUser(ctx context.Context, userID string, patchJSON []byte
 	user.Attributes = *patchedUserAttr
 
 	// need to validate user post-patch to ensure we're not left in an invalid state
-	if err := user.Validate(s.idTool); err != nil {
+	if err := user.Validate(s.idTool, s.passWordTool); err != nil {
 		return newInvalidInputError("patch would leave user in invalid state", err)
 	}
 

@@ -16,12 +16,14 @@ import (
 func TestCreateUser_successPath(t *testing.T) {
 	mr := &mockRepo{}
 	mIDt := &mockIDTool{}
+	mpt := &mockPasswordTool{}
 
 	var (
-		uID      = "9abc46be-3bcd-42b1-aeb2-ac6ff557a580"
-		userName = "JohnDoe"
-		email    = "test@example.com"
-		password = "password"
+		uID        = "9abc46be-3bcd-42b1-aeb2-ac6ff557a580"
+		userName   = "JohnDoe"
+		email      = "test@example.com"
+		password   = "password"
+		saltedHash = "$2a$10$zKDq1KOCqy430Fa1oyZs5eqSvyk7U6e8.wlgXTGEUDy7nX/a7lnWK"
 	)
 
 	expectedUser := User{
@@ -30,24 +32,29 @@ func TestCreateUser_successPath(t *testing.T) {
 			UserName: userName,
 			Email:    email,
 		},
-		Password: password,
+		Password: saltedHash,
 	}
 
 	mIDt.On("New").Return(uID, nil).Once()
 	mIDt.On("IsValid", uID).Return(true).Once()
+
+	mpt.On("New", password).Return(saltedHash, nil).Once()
+	mpt.On("IsValid", saltedHash).Return(true).Once()
+
 	mr.On("CreateUser", mock.Anything, expectedUser).Return(nil).Once()
 
-	service := NewService(nullLogger(), mr, mIDt)
+	service := NewService(nullLogger(), mr, mIDt, mpt)
 	user, err := service.CreateUser(context.Background(), userName, email, password)
 	assert.Nil(t, err)
 	assert.EqualValues(t, expectedUser, *user)
 
 	mr.AssertExpectations(t)
 	mIDt.AssertExpectations(t)
+	mpt.AssertExpectations(t)
 }
 
 func TestCreateUser_emptyInput_failurePath(t *testing.T) {
-	var (
+	const (
 		userName = "JohnDoe"
 		email    = "test@example.com"
 		password = "password"
@@ -79,7 +86,7 @@ func TestCreateUser_emptyInput_failurePath(t *testing.T) {
 		},
 	}
 
-	service := NewService(nullLogger(), nil, nil)
+	service := NewService(nullLogger(), nil, nil, nil)
 	expectedErr := newInvalidInputError("each of userName, email, password must not be empty", nil)
 
 	for idx, tc := range testCases {
@@ -92,7 +99,7 @@ func TestCreateUser_emptyInput_failurePath(t *testing.T) {
 }
 
 func TestCreateUser_errorGeneratingID_successPath(t *testing.T) {
-	var (
+	const (
 		userName = "JohnDoe"
 		email    = "test@example.com"
 		password = "password"
@@ -102,7 +109,7 @@ func TestCreateUser_errorGeneratingID_successPath(t *testing.T) {
 	mIDt := &mockIDTool{}
 	mIDt.On("New").Return("", fmt.Errorf("no ID for you")).Once()
 
-	service := NewService(nullLogger(), nil, mIDt)
+	service := NewService(nullLogger(), nil, mIDt, nil)
 
 	user, err := service.CreateUser(context.Background(), userName, email, password)
 	assert.Nil(t, user)
@@ -114,12 +121,14 @@ func TestCreateUser_errorGeneratingID_successPath(t *testing.T) {
 func TestCreateUser_repoError_failurePath(t *testing.T) {
 	mr := &mockRepo{}
 	mIDt := &mockIDTool{}
+	mpt := &mockPasswordTool{}
 
-	var (
-		uID      = "9abc46be-3bcd-42b1-aeb2-ac6ff557a580"
-		userName = "JohnDoe"
-		email    = "test@example.com"
-		password = "password"
+	const (
+		uID        = "9abc46be-3bcd-42b1-aeb2-ac6ff557a580"
+		userName   = "JohnDoe"
+		email      = "test@example.com"
+		password   = "password"
+		saltedHash = "$2a$10$zKDq1KOCqy430Fa1oyZs5eqSvyk7U6e8.wlgXTGEUDy7nX/a7lnWK"
 	)
 
 	expectedUser := User{
@@ -128,58 +137,52 @@ func TestCreateUser_repoError_failurePath(t *testing.T) {
 			UserName: userName,
 			Email:    email,
 		},
-		Password: password,
+		Password: saltedHash,
 	}
 
 	mIDt.On("New").Return(uID, nil).Once()
 	mIDt.On("IsValid", uID).Return(true).Once()
 
+	mpt.On("New", password).Return(saltedHash, nil).Once()
+	mpt.On("IsValid", saltedHash).Return(true).Once()
+
 	repoErr := fmt.Errorf("repo error")
 	mr.On("CreateUser", mock.Anything, expectedUser).Return(repoErr).Once()
 
-	service := NewService(nullLogger(), mr, mIDt)
+	service := NewService(nullLogger(), mr, mIDt, mpt)
 	user, err := service.CreateUser(context.Background(), userName, email, password)
 	assert.Nil(t, user)
 	assert.Equal(t, newSystemError("failed to store new user", repoErr), err)
 
 	mr.AssertExpectations(t)
 	mIDt.AssertExpectations(t)
+	mpt.AssertExpectations(t)
 }
 
 func TestCreateUser_badInput_failurePath(t *testing.T) {
-	randomCharsLen256 := "WIeIluERPJhLEDXq5yIhO1DPTfAoYiY6ZWHJ4Wycvnn1RYX69S9qatFtLyh3FOMjqZyK3CMyiBKbAb78DF1mPf72Ah6Zt3L0utJwtIrBtJbtXw0hnOqxZfWh1VUJjx218Bn3Bw4nZQpH3rRqw03e3TiUFed1LmusXvI8rZqgPY4eRFZTeKXjJqdAtIXBmdzhnLIiVFJWp89F3FUAJBCF2ImAtaU2OUp200eWkc5x7OeBrqKY1wxWzyUODccLxjt"
-	randomCharsLen21 := "WIeIluERPJhLEDXq5yIhO"
-
-	var (
-		uID      = "9abc46be-3bcd-42b1-aeb2-ac6ff557a580"
-		userName = "JohnDoe"
-		email    = "notAnEmail"
-		password = "password"
+	const (
+		uID              = "9abc46be-3bcd-42b1-aeb2-ac6ff557a580"
+		userName         = "JohnDoe"
+		email            = "notAnEmail"
+		password         = "password"
+		saltedHash       = "$2a$10$zKDq1KOCqy430Fa1oyZs5eqSvyk7U6e8.wlgXTGEUDy7nX/a7lnWK"
+		randomCharsLen21 = "WIeIluERPJhLEDXq5yIhO"
 	)
 
 	testCases := []struct {
 		name     string
 		userName string
 		email    string
-		password string
 	}{
 		{
 			name:     "bad email",
 			userName: userName,
 			email:    "notAnEmail",
-			password: password,
-		},
-		{
-			name:     "bad password",
-			userName: userName,
-			email:    email,
-			password: randomCharsLen256,
 		},
 		{
 			name:     "bad userName",
 			userName: randomCharsLen21,
 			email:    email,
-			password: password,
 		},
 	}
 
@@ -187,10 +190,14 @@ func TestCreateUser_badInput_failurePath(t *testing.T) {
 		t.Run(fmt.Sprintf("test case %d: %s", idx, tc.name), func(t *testing.T) {
 			mr := &mockRepo{}
 			mIDt := &mockIDTool{}
+			mpt := &mockPasswordTool{}
+
 			mIDt.On("New").Return(uID, nil).Once()
 			mIDt.On("IsValid", uID).Return(true).Once()
 
-			service := NewService(nullLogger(), mr, mIDt)
+			mpt.On("New", password).Return(saltedHash, nil).Once()
+
+			service := NewService(nullLogger(), mr, mIDt, mpt)
 			user, err := service.CreateUser(context.Background(), userName, email, password)
 			assert.Nil(t, user)
 			assert.Equal(t, "user is invalid", err.Msg)
@@ -198,13 +205,14 @@ func TestCreateUser_badInput_failurePath(t *testing.T) {
 
 			mr.AssertExpectations(t)
 			mIDt.AssertExpectations(t)
+			mpt.AssertExpectations(t)
 		})
 	}
 }
 
-////////////////
-//  GetUser  //
-//////////////
+// ////////////////
+// //  GetUser  //
+// //////////////
 
 func TestGetUser_successPath(t *testing.T) {
 	mr := &mockRepo{}
@@ -223,7 +231,7 @@ func TestGetUser_successPath(t *testing.T) {
 	mr.On("GetUser", mock.Anything, uID).Return(&expectedUser, nil).Once()
 	mIDt.On("IsValid", uID).Return(true).Once()
 
-	service := NewService(nullLogger(), mr, mIDt)
+	service := NewService(nullLogger(), mr, mIDt, nil)
 	user, err := service.GetUser(context.Background(), uID)
 	assert.Nil(t, err)
 	assert.EqualValues(t, expectedUser, *user)
@@ -239,7 +247,7 @@ func TestGetUser_invalidID_failurePath(t *testing.T) {
 
 	mIDt.On("IsValid", uID).Return(false).Once()
 
-	service := NewService(nullLogger(), nil, mIDt)
+	service := NewService(nullLogger(), nil, mIDt, nil)
 	user, err := service.GetUser(context.Background(), uID)
 	assert.Nil(t, user)
 
@@ -259,7 +267,7 @@ func TestGetUser_repoError_failurePath(t *testing.T) {
 	mr.On("GetUser", mock.Anything, uID).Return(nil, repoErr).Once()
 	mIDt.On("IsValid", uID).Return(true).Once()
 
-	service := NewService(nullLogger(), mr, mIDt)
+	service := NewService(nullLogger(), mr, mIDt, nil)
 	user, err := service.GetUser(context.Background(), uID)
 	assert.Nil(t, user)
 
@@ -279,7 +287,7 @@ func TestGetUser_userNotFound_failurePath(t *testing.T) {
 	mr.On("GetUser", mock.Anything, uID).Return(nil, nil).Once()
 	mIDt.On("IsValid", uID).Return(true).Once()
 
-	service := NewService(nullLogger(), mr, mIDt)
+	service := NewService(nullLogger(), mr, mIDt, nil)
 	user, err := service.GetUser(context.Background(), uID)
 	assert.Nil(t, user)
 
@@ -290,13 +298,14 @@ func TestGetUser_userNotFound_failurePath(t *testing.T) {
 	mIDt.AssertExpectations(t)
 }
 
-////////////////
-// PatchUser //
-//////////////
+// ////////////////
+// // PatchUser //
+// //////////////
 
 func TestPatchUser_successPath(t *testing.T) {
 	mr := &mockRepo{}
 	mIDt := &mockIDTool{}
+	mpt := &mockPasswordTool{}
 
 	uID := "9abc46be-3bcd-42b1-aeb2-ac6ff557a580"
 	originalUser := User{
@@ -328,7 +337,9 @@ func TestPatchUser_successPath(t *testing.T) {
 
 	mIDt.On("IsValid", uID).Return(true).Twice()
 
-	service := NewService(nullLogger(), mr, mIDt)
+	mpt.On("IsValid", "password").Return(true).Once()
+
+	service := NewService(nullLogger(), mr, mIDt, mpt)
 	err := service.PatchUser(context.Background(), uID, []byte(patchJSON))
 	assert.Nil(t, err)
 
@@ -340,7 +351,7 @@ func TestPatchUser_invalidID_failurePath(t *testing.T) {
 	mIDt := &mockIDTool{}
 	mIDt.On("IsValid", "nope").Return(false).Once()
 
-	service := NewService(nullLogger(), nil, mIDt)
+	service := NewService(nullLogger(), nil, mIDt, nil)
 	err := service.PatchUser(context.Background(), "nope", []byte("[]"))
 
 	expectedErr := newInvalidInputError("format of userID is invalid", nil)
@@ -356,7 +367,7 @@ func TestPatchUser_invalidJSONInPatchJSON_failurePath(t *testing.T) {
 	mIDt := &mockIDTool{}
 	mIDt.On("IsValid", uID).Return(true).Once()
 
-	service := NewService(nullLogger(), nil, mIDt)
+	service := NewService(nullLogger(), nil, mIDt, nil)
 	err := service.PatchUser(context.Background(), uID, []byte(patchJSON))
 
 	expectedErr := newInvalidInputError("patch could not be decoded", fmt.Errorf("unexpected end of JSON input"))
@@ -384,7 +395,7 @@ func TestPatchUser_invalidPatchJSON_failurePath(t *testing.T) {
 	mIDt := &mockIDTool{}
 	mIDt.On("IsValid", uID).Return(true).Once()
 
-	service := NewService(nullLogger(), mr, mIDt)
+	service := NewService(nullLogger(), mr, mIDt, nil)
 	err := service.PatchUser(context.Background(), uID, []byte(patchJSON))
 
 	expectedErr := newInvalidInputError("failed to patch user, patch invalid", fmt.Errorf("Unexpected kind: unknown"))
@@ -409,7 +420,7 @@ func TestPatchUser_repoErrorRetrievingExistingUser_failurePath(t *testing.T) {
 
 	mIDt.On("IsValid", uID).Return(true).Once()
 
-	service := NewService(nullLogger(), mr, mIDt)
+	service := NewService(nullLogger(), mr, mIDt, nil)
 	err := service.PatchUser(context.Background(), uID, []byte(patchJSON))
 
 	expectedErr := newSystemError("failed to retrieve user", repoErr)
@@ -434,7 +445,7 @@ func TestPatchUser_userDoesNotExist_failurePath(t *testing.T) {
 
 	mIDt.On("IsValid", uID).Return(true).Once()
 
-	service := NewService(nullLogger(), mr, mIDt)
+	service := NewService(nullLogger(), mr, mIDt, nil)
 	err := service.PatchUser(context.Background(), uID, []byte(patchJSON))
 
 	expectedErr := newResourceNotFoundError("user does not exist", nil)
@@ -467,7 +478,7 @@ func TestPatchUser_patchDoesntChangeAnything_failurePath(t *testing.T) {
 
 	mIDt.On("IsValid", uID).Return(true).Once()
 
-	service := NewService(nullLogger(), mr, mIDt)
+	service := NewService(nullLogger(), mr, mIDt, nil)
 	err := service.PatchUser(context.Background(), uID, []byte(patchJSON))
 
 	expectedErr := newInvalidInputError("patch does not effect any change", nil).WrapMessage("failed to patch user")
@@ -511,7 +522,7 @@ func TestPatchUser_patchMakesInvalidChanges_successPath(t *testing.T) {
 
 			mIDt.On("IsValid", uID).Return(true).Twice()
 
-			service := NewService(nullLogger(), mr, mIDt)
+			service := NewService(nullLogger(), mr, mIDt, nil)
 			err := service.PatchUser(context.Background(), uID, []byte(tc.patchJSON))
 
 			assert.Equal(t, InvalidInput, err.Code)
@@ -524,17 +535,24 @@ func TestPatchUser_patchMakesInvalidChanges_successPath(t *testing.T) {
 }
 
 func TestPatchUser_repoErrorUpdatingUser_failurePath(t *testing.T) {
+	var (
+		uID        = "9abc46be-3bcd-42b1-aeb2-ac6ff557a580"
+		userName   = "JohnDoe"
+		email      = "test@example.com"
+		saltedHash = "$2a$10$zKDq1KOCqy430Fa1oyZs5eqSvyk7U6e8.wlgXTGEUDy7nX/a7lnWK"
+	)
+
 	mr := &mockRepo{}
 	mIDt := &mockIDTool{}
+	mpt := &mockPasswordTool{}
 
-	uID := "9abc46be-3bcd-42b1-aeb2-ac6ff557a580"
 	originalUser := User{
 		ID: uID,
 		Attributes: UserAttributes{
-			UserName: "JohnDoe",
-			Email:    "test@example.com",
+			UserName: userName,
+			Email:    email,
 		},
-		Password: "password",
+		Password: saltedHash,
 	}
 
 	patchJSON := `[
@@ -549,16 +567,18 @@ func TestPatchUser_repoErrorUpdatingUser_failurePath(t *testing.T) {
 			UserName: "foo",
 			Email:    "bar@example.com",
 		},
-		Password: "password",
+		Password: saltedHash,
 	}
 
 	repoErr := fmt.Errorf("repo error")
 	mr.On("GetUser", mock.Anything, uID).Return(&originalUser, nil).Once()
 	mr.On("UpdateUser", mock.Anything, patchedUser).Return(repoErr).Once()
 
+	mpt.On("IsValid", saltedHash).Return(true).Once()
+
 	mIDt.On("IsValid", uID).Return(true).Twice()
 
-	service := NewService(nullLogger(), mr, mIDt)
+	service := NewService(nullLogger(), mr, mIDt, mpt)
 	err := service.PatchUser(context.Background(), uID, []byte(patchJSON))
 
 	expectedErr := newSystemError("failed to update user with patched attributes", repoErr)

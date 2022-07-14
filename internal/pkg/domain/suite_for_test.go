@@ -54,6 +54,21 @@ func (mIDt *mockIDTool) IsValid(ID string) bool {
 	return args.Get(0).(bool)
 }
 
+type mockPasswordTool struct {
+	mock.Mock
+}
+
+func (mpt *mockPasswordTool) New(password string) (string, error) {
+	args := mpt.Called(password)
+
+	return args.Get(0).(string), args.Error(1)
+}
+
+func (mpt *mockPasswordTool) IsValid(password string) bool {
+	args := mpt.Called(password)
+	return args.Get(0).(bool)
+}
+
 // Creates a silent logger instance that discards all output
 func nullLogger() *logrus.Logger {
 	logger := logrus.New()

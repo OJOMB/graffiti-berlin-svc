@@ -9,6 +9,7 @@ import (
 
 	"github.com/OJOMB/graffiti-berlin-svc/internal/app"
 	"github.com/OJOMB/graffiti-berlin-svc/internal/pkg/domain"
+	"github.com/OJOMB/graffiti-berlin-svc/internal/pkg/passwords"
 	"github.com/OJOMB/graffiti-berlin-svc/internal/pkg/repo"
 	"github.com/OJOMB/graffiti-berlin-svc/internal/pkg/uuidv4"
 	"github.com/gorilla/mux"
@@ -35,6 +36,8 @@ const (
 	defaultDBPassword  = "pass"
 
 	dbName = "graffiti"
+
+	passwordGeneratorCost = 15
 )
 
 func main() {
@@ -125,7 +128,12 @@ func main() {
 		logger, &net.TCPAddr{IP: net.ParseIP(defaultHost), Port: port},
 		version,
 		docsEnabled,
-		domain.NewService(logger, repo.NewSQLRepo(db, logger), uuidv4.NewGenerator()),
+		domain.NewService(
+			logger,
+			repo.NewSQLRepo(db, logger),
+			uuidv4.NewGenerator(),
+			passwords.NewGenerator(passwordGeneratorCost),
+		),
 	)
 
 	server.Run()
