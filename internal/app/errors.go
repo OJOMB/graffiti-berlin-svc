@@ -17,6 +17,7 @@ var svcErrMessagesToStatusCodes = map[domain.ErrorType]int{
 	domain.ResourceNotFound: http.StatusNotFound,
 	domain.SystemError:      http.StatusInternalServerError,
 	domain.ResourceConflict: http.StatusConflict,
+	domain.Unauthorized:     http.StatusUnauthorized,
 	domain.NotImplemented:   http.StatusNotImplemented,
 }
 
@@ -47,4 +48,8 @@ func (apperr *appErr) Error() string {
 
 func (apperr *appErr) Code() int {
 	return apperr.code
+}
+
+func httpErrorFromAppErr(w http.ResponseWriter, appErr *appErr) {
+	http.Error(w, appErr.Error(), appErr.Code())
 }

@@ -1,6 +1,7 @@
 package passwords
 
 import (
+	"fmt"
 	"regexp"
 
 	"golang.org/x/crypto/bcrypt"
@@ -27,4 +28,15 @@ func (pg *PasswordGenerator) New(password string) (string, error) {
 
 func (pg *PasswordGenerator) IsValid(password string) bool {
 	return !saltedHashRegex.MatchString(password)
+}
+
+func (pg *PasswordGenerator) Check(hash, password string) error {
+	err := bcrypt.CompareHashAndPassword([]byte(hash), []byte(password))
+	if err != nil && err != bcrypt.ErrMismatchedHashAndPassword {
+		return fmt.Errorf("mismatched hash and password")
+	} else if err != nil {
+		return fmt.Errorf("encountered error checking password")
+	}
+
+	return nil
 }

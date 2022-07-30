@@ -15,7 +15,7 @@ import (
 
 func TestHandleCreateUser_successPath(t *testing.T) {
 	ms := &mockService{}
-	app := New(nil, nullLogger(), nil, "", false, ms)
+	app := New(nil, nullLogger(), nil, "", "", nil, ms)
 
 	u := domain.NewUser("9abc46be-3bcd-42b1-aeb2-ac6ff557a580", "test", "test@example.com", "ac6ff557a5804eff")
 	ms.On("CreateUser", mock.Anything, "test", "test@example.com", "ac6ff557a5804eff").Return(u, nil)
@@ -36,7 +36,7 @@ func TestHandleCreateUser_successPath(t *testing.T) {
 }
 
 func TestHandleCreateUser_requestBodyContainsInvalidJSON_failurePath(t *testing.T) {
-	app := New(nil, nullLogger(), nil, "", false, nil)
+	app := New(nil, nullLogger(), nil, "", "", nil, nil)
 
 	w := httptest.NewRecorder()
 	reqBody := `{"user_name":"test", "email":"test@example.com", "password":"ac6ff557a5804eff"`
@@ -49,7 +49,7 @@ func TestHandleCreateUser_requestBodyContainsInvalidJSON_failurePath(t *testing.
 }
 
 func TestHandleCreateUser_requestBodyUnreadable_failurePath(t *testing.T) {
-	app := New(nil, nullLogger(), nil, "", false, nil)
+	app := New(nil, nullLogger(), nil, "", "", nil, nil)
 
 	w := httptest.NewRecorder()
 	var reqBody errReader = 0
@@ -85,7 +85,7 @@ func TestHandleCreateUser_serviceErr_failurePath(t *testing.T) {
 	for idx, tc := range testCases {
 		t.Run(fmt.Sprintf("test case %d: %s", idx, tc.name), func(t *testing.T) {
 			ms := &mockService{}
-			app := New(nil, nullLogger(), nil, "", false, ms)
+			app := New(nil, nullLogger(), nil, "", "", nil, ms)
 
 			ms.On("CreateUser", mock.Anything, "test", "test@example.com", "ac6ff557a5804eff").
 				Return(nil, &domain.Error{Code: tc.domainErrType, Msg: "test error"})

@@ -9,12 +9,14 @@ const (
 	ResourceNotFound
 	SystemError
 	ResourceConflict
+	Unauthorized
 	NotImplemented
 
 	errInvalidInputDataStr = "invalid input data"
 	errResourceNotFoundStr = "resource not found"
 	errSystemErrorStr      = "unexpected system error"
 	errResourceConflictStr = "resource state conflict"
+	errUnauthroizedStr     = "unauthorized"
 	errNotImplementedStr   = "not implemented"
 )
 
@@ -23,6 +25,7 @@ var domainErrors = map[ErrorType]string{
 	ResourceNotFound: errResourceNotFoundStr,
 	SystemError:      errSystemErrorStr,
 	ResourceConflict: errResourceConflictStr,
+	Unauthorized:     errUnauthroizedStr,
 	NotImplemented:   errNotImplementedStr,
 }
 
@@ -60,6 +63,11 @@ func newSystemError(msg string, err error) *Error {
 // newResourceConflictError is a helper function that constructs a new domainError of code resourceConflict with the given message and error.
 func newResourceConflictError(msg string, err error) *Error {
 	return &Error{Code: ResourceConflict, Msg: msg, Err: err}
+}
+
+// newUnauthorizedError is a helper function that constructs a new domainError of code unauthorized with the given message and error.
+func newUnauthorizedError(msg string, err error) *Error {
+	return &Error{Code: Unauthorized, Msg: msg, Err: err}
 }
 
 // newNotImplementedError is a helper function that constructs a new domainError of code notImplemented with the given message and error.

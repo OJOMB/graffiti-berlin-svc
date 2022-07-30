@@ -3,6 +3,7 @@ package domain
 import (
 	"context"
 	"encoding/json"
+	"strings"
 
 	jsonpatch "github.com/evanphx/json-patch"
 	"github.com/sirupsen/logrus"
@@ -134,4 +135,65 @@ func (s *Service) createPatchedUser(userAttr []byte, patch jsonpatch.Patch) (*Us
 	}
 
 	return &patchedUser, nil
+}
+
+// ValidateUserCredentials checks if the given credentials are valid. If they are, we return the User, if not we return an error
+func (s *Service) ValidateUserCredentials(ctx context.Context, userName, email, password string) (*User, *Error) {
+	if password == "" {
+		return nil, newInvalidInputError("password must not be empty", nil)
+	}
+
+	var user *User
+	var err error
+	if userName != "" {
+		user, err = s.repo.GetUserByUserName(ctx, userName)
+	} else if email != "" {
+		user, err = s.repo.GetUserByEmail(ctx, email)
+	} else {
+		return nil, newInvalidInputError("must provide either username or email", nil)
+	}
+
+	if user == nil {
+		return nil, newResourceNotFoundError("user does not exist", nil)
+	} else if err != nil {
+		return nil, newSystemError("failed to retrieve user", err)
+	}
+
+	if err := s.passWordTool.Check(user.Password, password); err != nil && strings.Contains(err.Error(), "mismatched hash and password") {
+		return nil, newUnauthorizedError("credentials are invalid", nil)
+	} else if err != nil {
+		return nil, newSystemError("failed to validate password", err)
+	}
+
+	return user, nil
+}
+
+func (s *Service) GetUserByEmail(ctx context.Context, email string) (*User, *Error) {
+	if email == "" {
+		return nil, newInvalidInputError("email must not be empty", nil)
+	}
+
+	user, err := s.repo.GetUserByEmail(ctx, email)
+	if err != nil {
+		return nil, newSystemError("failed to retrieve user", err)
+	} else if user == nil {
+		return nil, newResourceNotFoundError("user does not exist", nil)
+	}
+
+	return user, nil
+}
+
+func (s *Service) GetUserByUserName(ctx context.Context, userName string) (*User, *Error) {
+	if userName == "" {
+		return nil, newInvalidInputError("username must not be empty", nil)
+	}
+
+	user, err := s.repo.GetUserByUserName(ctx, userName)
+	if err != nil {
+		return nil, newSystemError("failed to retrieve user", err)
+	} else if user == nil {
+		return nil, newResourceNotFoundError("user does not exist", nil)
+	}
+
+	return user, nil
 }

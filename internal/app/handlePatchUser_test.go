@@ -15,7 +15,7 @@ import (
 
 func TestHandlePatchUser_successPath(t *testing.T) {
 	ms := &mockService{}
-	app := New(nil, nullLogger(), nil, "", false, ms)
+	app := New(nil, nullLogger(), nil, "", "", nil, ms)
 
 	patchJSON := `[
 		{ "op": "replace", "path": "/user_name", "value": "foo" },
@@ -37,7 +37,7 @@ func TestHandlePatchUser_successPath(t *testing.T) {
 }
 
 func TestHandlePatchUser_requestBodyUnreadable_successPath(t *testing.T) {
-	app := New(nil, nullLogger(), nil, "", false, nil)
+	app := New(nil, nullLogger(), nil, "", "", nil, nil)
 
 	var unreadableBody errReader = 0
 	w := httptest.NewRecorder()
@@ -74,7 +74,7 @@ func TestHandlePatchUser_serviceErr_failurePath(t *testing.T) {
 	for idx, tc := range testCases {
 		t.Run(fmt.Sprintf("test case %d: %s", idx, tc.name), func(t *testing.T) {
 			ms := &mockService{}
-			app := New(nil, nullLogger(), nil, "", false, ms)
+			app := New(nil, nullLogger(), nil, "", "", nil, ms)
 
 			patchJSON := `[
 				{ "op": "replace", "path": "/user_name", "value": "foo" },
@@ -100,7 +100,7 @@ func TestHandlePatchUser_serviceErr_failurePath(t *testing.T) {
 
 func TestHandlePatchUser_userNotFound_failurePath(t *testing.T) {
 	ms := &mockService{}
-	app := New(nil, nullLogger(), nil, "", false, ms)
+	app := New(nil, nullLogger(), nil, "", "", nil, ms)
 
 	patchJSON := `[
 		{ "op": "replace", "path": "/user_name", "value": "foo" },

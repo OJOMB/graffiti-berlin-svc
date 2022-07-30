@@ -6,8 +6,10 @@ import (
 	"net"
 	"os"
 	"strconv"
+	"time"
 
 	"github.com/OJOMB/graffiti-berlin-svc/internal/app"
+	"github.com/OJOMB/graffiti-berlin-svc/internal/pkg/auth"
 	"github.com/OJOMB/graffiti-berlin-svc/internal/pkg/domain"
 	"github.com/OJOMB/graffiti-berlin-svc/internal/pkg/passwords"
 	"github.com/OJOMB/graffiti-berlin-svc/internal/pkg/repo"
@@ -35,7 +37,8 @@ const (
 	defaultDBUser      = "root"
 	defaultDBPassword  = "pass"
 
-	dbName = "graffiti"
+	dbName  = "graffiti"
+	appName = "graffiti-berlin-svc"
 
 	passwordGeneratorCost = 15
 )
@@ -127,7 +130,8 @@ func main() {
 		mux.NewRouter(),
 		logger, &net.TCPAddr{IP: net.ParseIP(defaultHost), Port: port},
 		version,
-		docsEnabled,
+		environment,
+		auth.NewJWTTool("secretKey", 12*time.Hour, appName),
 		domain.NewService(
 			logger,
 			repo.NewSQLRepo(db, logger),

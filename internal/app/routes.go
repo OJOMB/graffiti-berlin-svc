@@ -3,8 +3,6 @@ package app
 import (
 	"fmt"
 	"net/http"
-
-	"github.com/OJOMB/graffiti-berlin-svc/internal/app/middleware"
 )
 
 const (
@@ -12,18 +10,29 @@ const (
 )
 
 func (app *App) routes() {
-	if app.docsEnabled {
+	// handles routing app functionality
+	appRouter := app.router.PathPrefix("").Subrouter()
+
+	if app.env != "production" {
 		fs := http.FileServer(http.Dir("./api/OpenAPI/"))
-		app.router.PathPrefix("/docs").Handler(http.StripPrefix("/docs", fs))
+		appRouter.PathPrefix("/docs").Handler(http.StripPrefix("/docs", fs))
 	}
 
-	// Users
-	app.router.HandleFunc("/api/v1/users", app.handleCreateUser()).Methods(http.MethodPost)
-	// app.router.HandleFunc("/users", app.handleGetUsers()).Methods("GET")
-	app.router.HandleFunc(fmt.Sprintf("/api/v1/users/{%s}", urlVarUserID), app.handleGetUser()).Methods(http.MethodGet)
-	app.router.HandleFunc("/users/{id}", app.handlePatchUser()).Methods(http.MethodPatch)
-	// app.router.HandleFunc("/users/{id}", app.handleDeleteUser()).Methods("DELETE")
-	// app.router.HandleFunc("/users/{id}/password", app.handleUpdateUserPassword()).Methods("PUT")
+	appRouter.HandleFunc("/auth", app.handleAuthenticate()).Methods(http.MethodPost)
+	appRouter.HandleFunc("/ping", app.handlePing()).Methods(http.MethodGet)
 
-	app.router.Use(middleware.NewRequestResponseLogger(app.logger).Middleware)
+	// handles routing domain functionality for api v1
+	apiV1Router := app.router.PathPrefix("/api/v1").Subrouter()
+	// Users
+	apiV1Router.HandleFunc("/users", app.handleCreateUser()).Methods(http.MethodPost)
+	// apiV1Router.HandleFunc("/users", app.handleGetUsers()).Methods("GET")
+	apiV1Router.HandleFunc(fmt.Sprintf("/users/{%s}", urlVarUserID), app.handleGetUser()).Methods(http.MethodGet)
+	apiV1Router.HandleFunc(fmt.Sprintf("/users/{%s}", urlVarUserID), app.handlePatchUser()).Methods(http.MethodPatch)
+	// apiV1Router.HandleFunc(fmt.Sprintf("/users/{%s}", app.handleDeleteUser()).Methods("DELETE")
+	// apiV1Router.HandleFunc(fmt.Sprintf("/users/{%s}/password", app.handleUpdateUserPassword()).Methods("PUT")
+
+	apiV1Router.Use(NewRequestResponseLogger(app.logger).Middleware)
+	if app.env == "production" || app.env == "staging" {
+		//do summat
+	}
 }

@@ -10,22 +10,26 @@ import (
 
 const componentSQLRepo = "SQLRepo"
 
-type SQlRepo struct {
+type SQLRepo struct {
 	db     *sql.DB
 	logger *logrus.Entry
 }
 
-func NewSQLRepo(db *sql.DB, logger *logrus.Logger) *SQlRepo {
-	return &SQlRepo{
+func NewSQLRepo(db *sql.DB, logger *logrus.Logger) *SQLRepo {
+	return &SQLRepo{
 		db:     db,
 		logger: logger.WithField("component", componentSQLRepo),
 	}
 }
 
-func (r *SQlRepo) CreateUser(ctx context.Context, user domain.User) error {
+func (r *SQLRepo) Ping() error {
+	return r.db.Ping()
+}
+
+func (r *SQLRepo) CreateUser(ctx context.Context, user domain.User) error {
 	_, err := r.db.ExecContext(
 		ctx,
-		`INSERT INTO users (id, name, email, password) VALUES (?, ?, ?, ?)`,
+		`INSERT INTO users (id, user_name, email, password) VALUES (?, ?, ?, ?)`,
 		user.ID, user.Attributes.UserName, user.Attributes.Email, user.Password,
 	)
 	if err != nil {
@@ -36,11 +40,11 @@ func (r *SQlRepo) CreateUser(ctx context.Context, user domain.User) error {
 	return nil
 }
 
-func (r *SQlRepo) GetUser(ctx context.Context, userID string) (*domain.User, error) {
+func (r *SQLRepo) GetUser(ctx context.Context, userID string) (*domain.User, error) {
 	user := domain.User{}
 	err := r.db.QueryRowContext(
 		ctx,
-		`SELECT id, name, email, password FROM users WHERE id = ?`,
+		`SELECT id, user_name, email, password FROM users WHERE id = ?`,
 		userID,
 	).Scan(
 		&user.ID, &user.Attributes.UserName, &user.Attributes.Email, &user.Password,
@@ -53,10 +57,10 @@ func (r *SQlRepo) GetUser(ctx context.Context, userID string) (*domain.User, err
 	return &user, nil
 }
 
-func (r *SQlRepo) UpdateUser(ctx context.Context, user domain.User) error {
+func (r *SQLRepo) UpdateUser(ctx context.Context, user domain.User) error {
 	_, err := r.db.ExecContext(
 		ctx,
-		`UPDATE users SET name = ?, email = ?, password = ? WHERE id = ?`,
+		`UPDATE users SET user_name = ?, email = ?, password = ? WHERE id = ?`,
 		user.Attributes.UserName, user.Attributes.Email, user.Password, user.ID,
 	)
 	if err != nil {
@@ -65,4 +69,42 @@ func (r *SQlRepo) UpdateUser(ctx context.Context, user domain.User) error {
 	}
 
 	return nil
+}
+
+func (r *SQLRepo) GetUserByEmail(ctx context.Context, email string) (*domain.User, error) {
+	user := domain.User{}
+	err := r.db.QueryRowContext(
+		ctx,
+		`SELECT id, user_name, email, password FROM users WHERE email = ?`,
+		email,
+	).Scan(
+		&user.ID, &user.Attributes.UserName, &user.Attributes.Email, &user.Password,
+	)
+	if err != nil && err != sql.ErrNoRows {
+		return nil, nil
+	} else if err != nil {
+		r.logger.WithError(err).WithField("method", "GetUserByEmail").Error("failed to get user")
+		return nil, err
+	}
+
+	return &user, nil
+}
+
+func (r *SQLRepo) GetUserByUserName(ctx context.Context, username string) (*domain.User, error) {
+	user := domain.User{}
+	err := r.db.QueryRowContext(
+		ctx,
+		`SELECT id, user_name, email, password FROM users WHERE user_name = ?`,
+		username,
+	).Scan(
+		&user.ID, &user.Attributes.UserName, &user.Attributes.Email, &user.Password,
+	)
+	if err != nil && err != sql.ErrNoRows {
+		return nil, nil
+	} else if err != nil {
+		r.logger.WithError(err).WithField("method", "GetUserByEmail").Error("failed to get user")
+		return nil, err
+	}
+
+	return &user, nil
 }

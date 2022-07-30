@@ -14,23 +14,25 @@ const (
 )
 
 type App struct {
-	router      *mux.Router
-	logger      *logrus.Entry
-	addr        net.Addr
-	version     string
-	docsEnabled bool
+	router  *mux.Router
+	logger  *logrus.Entry
+	addr    net.Addr
+	version string
+	env     string
 
-	service Service
+	tokenAuth TokenAuth
+	service   Service
 }
 
-func New(r *mux.Router, logger *logrus.Logger, addr net.Addr, version string, docsEnabled bool, svc Service) *App {
+func New(r *mux.Router, logger *logrus.Logger, addr net.Addr, version string, env string, auth TokenAuth, svc Service) *App {
 	return &App{
-		router:      r,
-		logger:      logger.WithField("component", componentApp),
-		addr:        addr,
-		version:     version,
-		docsEnabled: docsEnabled,
-		service:     svc,
+		router:    r,
+		logger:    logger.WithField("component", componentApp),
+		addr:      addr,
+		version:   version,
+		env:       env,
+		tokenAuth: auth,
+		service:   svc,
 	}
 }
 

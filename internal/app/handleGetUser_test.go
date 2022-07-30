@@ -16,7 +16,7 @@ import (
 
 func TestHandleGetUser_successPath(t *testing.T) {
 	ms := &mockService{}
-	app := New(nil, nullLogger(), nil, "", false, ms)
+	app := New(nil, nullLogger(), nil, "", "", nil, ms)
 
 	u := domain.NewUser("9abc46be-3bcd-42b1-aeb2-ac6ff557a580", "test", "test@example.com", "ac6ff557a5804eff")
 	ms.On("GetUser", mock.Anything, "9abc46be-3bcd-42b1-aeb2-ac6ff557a580").Return(u, nil)
@@ -63,7 +63,7 @@ func TestHandleGetUser_serviceErr_failurePath(t *testing.T) {
 			ms.On("GetUser", mock.Anything, "9abc46be-3bcd-42b1-aeb2-ac6ff557a580").
 				Return(nil, &domain.Error{Code: tc.domainErrType, Msg: "test error"})
 
-			app := New(nil, nullLogger(), nil, "", false, ms)
+			app := New(nil, nullLogger(), nil, "", "", nil, ms)
 
 			w := httptest.NewRecorder()
 			r := httptest.NewRequest(http.MethodGet, "/api/v1/users/9abc46be-3bcd-42b1-aeb2-ac6ff557a580", nil)
@@ -84,7 +84,7 @@ func TestHandleGetUser_userNotFound_failurePath(t *testing.T) {
 	ms.On("GetUser", mock.Anything, "9abc46be-3bcd-42b1-aeb2-ac6ff557a580").
 		Return(nil, nil)
 
-	app := New(nil, nullLogger(), nil, "", false, ms)
+	app := New(nil, nullLogger(), nil, "", "", nil, ms)
 
 	w := httptest.NewRecorder()
 	r := httptest.NewRequest(http.MethodGet, "/api/v1/users/9abc46be-3bcd-42b1-aeb2-ac6ff557a580", nil)

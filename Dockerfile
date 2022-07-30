@@ -4,8 +4,8 @@ EXPOSE 8080
 
 RUN apk add make
 
-COPY . /subscription-svc
-WORKDIR /subscription-svc
+COPY . /graffiti-berlin-svc
+WORKDIR /graffiti-berlin-svc
 
 RUN make compile
 
